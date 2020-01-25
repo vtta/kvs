@@ -1,26 +1,40 @@
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate dotenv_codegen;
+use structopt::StructOpt;
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = "kvs", about = "A command-line key-value store client")]
+struct Opt {
+    /// Activate debug mode
+    #[structopt(short, long)]
+    debug: bool,
+    /// Verbose mode (-v, -vv, -vvv, etc.)
+    #[structopt(short, long, parse(from_occurrences))]
+    verbose: u8,
+    #[structopt(subcommand)]
+    cmd: KvsCmd,
+}
+
+#[derive(Debug, StructOpt)]
+enum KvsCmd {
+    /// Set the value of a string key to a string
+    Set {
+        #[structopt(name = "KEY")]
+        key: String,
+        #[structopt(name = "VALUE")]
+        value: String,
+    },
+    /// Get the string value of a given string key
+    Get {
+        #[structopt(name = "KEY")]
+        key: String,
+    },
+    /// Remove a given key
+    Rm {
+        #[structopt(name = "KEY")]
+        key: String,
+    },
+}
 
 fn main() {
-    let yaml = load_yaml!("../cli.yml");
-    let matches = clap::App::from_yaml(yaml).get_matches();
-
-    let verbosity = matches.occurrences_of("verbose");
-    match verbosity {
-        0 => (),
-        1 => println!("Some verbose info"),
-        2 => println!("Tons of verbose info"),
-        _ => println!("Don't be silly"),
-    }
-
-    println!("{}", dotenv!("VERSION"));
-    println!("{}", std::env::var("PWD").unwrap_or_default());
-    println!("{}", std::env::var("HOME").unwrap_or_default());
-
-    let v = vec![1, 2, 3];
-
-    // v[99];
-    std::process::exit(-1);
+    let opt = Opt::from_args();
+    println!("{:?}", opt);
 }
