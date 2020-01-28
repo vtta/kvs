@@ -89,7 +89,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         let file = "serde.bson";
         let mut vec = Vec::new();
-        for _ in 0..10000 {
+        for _ in 0..1000 {
             vec.push(Move::new(rng.gen(), rng.gen(), rng.gen(), rng.gen()));
         }
         {

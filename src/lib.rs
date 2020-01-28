@@ -2,8 +2,8 @@
 
 //! A key-value store
 
-pub use kv::KvStore;
+pub use kvs::{KvStore, Result};
 
-mod kv;
+mod kvs;
 
 mod bb2;
