@@ -15,13 +15,11 @@ struct Direction {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, io, io::Write};
-
+    use super::*;
     use rand;
     use rand::Rng;
     use ron;
-
-    use super::*;
+    use std::{fs, io, io::Write};
 
     impl Move {
         fn new(x: f32, y: f32, z: f32, d: f32) -> Self {
