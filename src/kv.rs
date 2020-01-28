@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 /// A simple key-value store implementation which wraps around std `HashMap`
 ///
-/// Key-value pairs are stored in a `HashMap` which means it's not durable and persistent
+/// Key-value pairs are stored in a `HashMap` which means it's not durable nor persistent
 ///
 /// Example:
 ///

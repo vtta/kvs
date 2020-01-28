@@ -37,8 +37,8 @@ enum KvsCmd {
 fn main() {
     let opt = Opt::from_args();
     match opt.cmd {
-        KvsCmd::Get { key } => panic!("unimplemented"),
-        KvsCmd::Set { key, value } => panic!("unimplemented"),
-        KvsCmd::Rm { key } => panic!("unimplemented"),
+        KvsCmd::Get { .. } => panic!("unimplemented"),
+        KvsCmd::Set { .. } => panic!("unimplemented"),
+        KvsCmd::Rm { .. } => panic!("unimplemented"),
     }
 }
