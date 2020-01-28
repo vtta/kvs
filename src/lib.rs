@@ -2,8 +2,12 @@
 
 //! A key-value store
 
-pub use kvs::{KvStore, Result};
-
+mod error;
 mod kvs;
+mod result;
 
 mod bb2;
+
+pub use error::Error;
+pub use kvs::KvStore;
+pub use result::Result;

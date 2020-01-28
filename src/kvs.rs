@@ -1,8 +1,6 @@
-use failure::Error;
+use crate::error::Error;
+use crate::result::Result;
 use std::path::PathBuf;
-
-/// Result type wraps around Error type from [failure](https://crates.io/crates/failure) crate
-pub type Result<T> = std::result::Result<T, Error>;
 
 /// A simple on-disk key/value store that can be modified and queried from the command line.
 ///
