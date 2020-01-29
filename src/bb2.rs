@@ -19,6 +19,7 @@ mod tests {
     use rand;
     use rand::Rng;
     use ron;
+    use std::collections::HashMap;
     use std::{fs, io, io::Write};
 
     impl Move {
@@ -134,5 +135,14 @@ mod tests {
             }
         }
         assert_eq!(vec, dvec);
+    }
+
+    #[test]
+    fn bson_empty_document() {
+        let buf = String::new();
+        let empty: HashMap<String, String> = bson::decode_document(&mut buf.as_bytes())
+            .and_then(|doc| bson::from_bson(bson::Bson::from(doc)))
+            .unwrap_or(HashMap::<String, String>::new());
+        assert_eq!(empty, HashMap::<String, String>::new());
     }
 }

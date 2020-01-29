@@ -11,5 +11,5 @@ mod result;
 mod bb2;
 
 pub use crate::error::Error;
-pub use crate::kvs::{KvStore, KvsCmd};
+pub use crate::kvs::KvStore;
 pub use crate::result::Result;

@@ -1,4 +1,4 @@
-use kvs::{Error, KvStore, KvsCmd, Result};
+use kvs::{Error, KvStore, Result};
 
 use structopt::StructOpt;
 
@@ -15,32 +15,49 @@ struct Opt {
     cmd: KvsCmd,
 }
 
+/// Possible commands to be executed
+#[derive(Debug, Clone, StructOpt)]
+pub enum KvsCmd {
+    /// Set the value of a string key to a string
+    Set {
+        /// key to be set
+        #[structopt(name = "KEY")]
+        key: String,
+        /// value to be set
+        #[structopt(name = "VALUE")]
+        value: String,
+    },
+    /// Get the string value of a given string key
+    Get {
+        /// key part of the pair to get
+        #[structopt(name = "KEY")]
+        key: String,
+    },
+    /// Remove a given key
+    Rm {
+        /// key part of the pair to remove
+        #[structopt(name = "KEY")]
+        key: String,
+    },
+}
+
 fn main() -> Result<()> {
-    let mut path = std::env::current_dir()?;
     let opt = Opt::from_args();
-    match opt.cmd.clone() {
+    let path = std::env::current_dir()?;
+    let mut kvs = KvStore::open(path)?;
+    match opt.cmd {
         KvsCmd::Get { key } => {
-            let mut kvs = KvStore::open(path)?;
             let value = kvs.get(key)?.unwrap_or_else(|| "Key not found".to_owned());
             println!("{}", value);
         }
-        KvsCmd::Set { .. } => {
-            path.push(kvs::config::DB_FILE_NAME);
-            let mut db_file = std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(path)?;
-            let ser = bson::to_bson(&opt.cmd)?;
-            if let bson::Bson::Document(doc) = ser {
-                bson::encode_document(&mut db_file, &doc)?;
-            }
+        KvsCmd::Set { key, value } => {
+            kvs.set(key, value)?;
         }
         KvsCmd::Rm { key } => {
-            let mut kvs = KvStore::open(path)?;
             kvs.get(key.clone())?
                 .ok_or_else(|| {
                     println!("Key not found");
-                    Error::InvalidCmd(opt.cmd)
+                    Error::KeyNotFound(key.clone())
                 })
                 .and_then(|_| kvs.remove(key))?;
         }

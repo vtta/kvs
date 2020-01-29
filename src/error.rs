@@ -1,4 +1,3 @@
-use crate::kvs;
 use bson;
 
 /// custom Error type, which could be caused by std::io::Error and other things
@@ -11,7 +10,7 @@ pub enum Error {
     /// deserialization error
     De(bson::DecoderError),
     /// triggered by remove a non-existing key/value pair
-    InvalidCmd(kvs::KvsCmd),
+    KeyNotFound(String),
     /// backend database file is missing
     File(String),
 }
@@ -29,11 +28,6 @@ impl From<bson::EncoderError> for Error {
 impl From<bson::DecoderError> for Error {
     fn from(e: bson::DecoderError) -> Self {
         Error::De(e)
-    }
-}
-impl From<kvs::KvsCmd> for Error {
-    fn from(e: kvs::KvsCmd) -> Self {
-        Error::InvalidCmd(e)
     }
 }
 
