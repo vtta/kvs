@@ -1,5 +1,7 @@
 use structopt::StructOpt;
 
+use kvs::Result;
+
 #[derive(Debug, StructOpt)]
 #[structopt(name = "kvs", about = "A command-line key-value store client")]
 struct Opt {
@@ -10,11 +12,11 @@ struct Opt {
     #[structopt(short, long, parse(from_occurrences))]
     verbose: u8,
     #[structopt(subcommand)]
-    cmd: KvsCmd,
+    cmd: Cmd,
 }
 
 #[derive(Debug, StructOpt)]
-enum KvsCmd {
+enum Cmd {
     /// Set the value of a string key to a string
     Set {
         #[structopt(name = "KEY")]
@@ -34,11 +36,11 @@ enum KvsCmd {
     },
 }
 
-fn main() {
+fn main() -> Result<()> {
     let opt = Opt::from_args();
     match opt.cmd {
-        KvsCmd::Get { key } => panic!("unimplemented"),
-        KvsCmd::Set { key, value } => panic!("unimplemented"),
-        KvsCmd::Rm { key } => panic!("unimplemented"),
+        Cmd::Get { .. } => panic!("unimplemented"),
+        Cmd::Set { .. } => panic!("unimplemented"),
+        Cmd::Rm { .. } => panic!("unimplemented"),
     }
 }

@@ -1,4 +1,6 @@
+use crate::Result;
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 /// A simple key-value store implementation which wraps around std `HashMap`
 ///
@@ -28,29 +30,30 @@ pub struct KvStore {
 }
 
 impl KvStore {
-    /// Default ctor, init the underlying HashMap
-    pub fn new() -> Self {
-        KvStore { m: HashMap::new() }
+    /// Open the KvStore at a given path. Return the KvStore.
+    pub fn open(_path: impl Into<PathBuf>) -> Result<Self> {
+        todo!()
     }
 
     /// Set the value of a string key to a fstring
     ///
-    /// If a value is already associated with the given key, the value would be overridden.
-    pub fn set(&mut self, key: String, value: String) {
-        self.m.insert(key, value);
+    /// Return an error if the value is not written successfully.
+    pub fn set(&mut self, _key: String, _value: String) -> Result<()> {
+        todo!()
     }
 
     /// Get the string value of the a string key.
     ///
-    /// If the key does not exist, a `None` would be returned.
-    pub fn get(&mut self, key: String) -> Option<String> {
-        self.m.get(&key).cloned()
+    /// If the key does not exist, return `None`.
+    /// Return an error if the value is not read successfully.
+    pub fn get(&mut self, _key: String) -> Result<Option<String>> {
+        todo!()
     }
 
     /// Remove a given key.
     ///
-    /// If nothing is there, would simply fall through.
-    pub fn remove(&mut self, key: String) {
-        self.m.remove(&key);
+    /// Return an error if the key does not exist or is not removed successfully.
+    pub fn remove(&mut self, _key: String) -> Result<()> {
+        todo!()
     }
 }
