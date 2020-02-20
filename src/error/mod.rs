@@ -26,6 +26,8 @@ pub enum ErrorKind {
     InvalidHintFile,
     /// corrupted log entry
     InvalidLogEntry,
+    /// filename or offset in log pointer is not correct
+    InvalidLogPointer,
     /// the key to remove doesn't exist
     KeyNotExist,
 }
@@ -44,6 +46,7 @@ impl ErrorKind {
             ErrorKind::Serde => "serialization or serialization error",
             ErrorKind::InvalidHintFile => "invalid hint file",
             ErrorKind::InvalidLogEntry => "invalid log entry",
+            ErrorKind::InvalidLogPointer => "invalid log pointer",
             ErrorKind::KeyNotExist => "key not exist",
         }
     }
