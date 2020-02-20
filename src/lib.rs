@@ -1,10 +1,11 @@
 #![deny(missing_docs)]
-// #![feature(backtrace)]
+#![feature(with_options)]
 
 //! A key-value store
 
+pub use error::{Error, ErrorKind, Result};
+pub use kv::KvStore;
+
 mod error;
 mod kv;
-
-pub use error::{Error, Result};
-pub use kv::KvStore;
+mod log;

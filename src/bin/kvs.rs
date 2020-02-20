@@ -1,6 +1,6 @@
 use structopt::StructOpt;
 
-use kvs::Result;
+use kvs::{ErrorKind, KvStore, Result};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "kvs", about = "A command-line key-value store client")]
@@ -38,9 +38,23 @@ enum Cmd {
 
 fn main() -> Result<()> {
     let opt = Opt::from_args();
+    let mut store = KvStore::open(".")?;
     match opt.cmd {
-        Cmd::Get { .. } => panic!("unimplemented"),
-        Cmd::Set { .. } => panic!("unimplemented"),
-        Cmd::Rm { .. } => panic!("unimplemented"),
+        Cmd::Get { key } => {
+            let out = store
+                .get(key)?
+                .unwrap_or_else(|| "Key not found".to_owned());
+            println!("{}", out);
+        }
+        Cmd::Set { key, value } => store.set(key, value)?,
+        Cmd::Rm { key } => {
+            if let Err(e) = store.remove(key) {
+                if let ErrorKind::KeyNotExist = e.kind() {
+                    println!("Key not found")
+                }
+                return Err(e);
+            }
+        }
     }
+    Ok(())
 }
