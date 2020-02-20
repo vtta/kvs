@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -21,10 +22,15 @@ pub struct KvStore {
     /// the directory that contains database files
     full_path: PathBuf,
     /// active database segment
-    active: Segment,
+    active: RefCell<Segment>,
     /// index
     memtbl: MemTable,
+    /// use set_count to decide whether to perform compaction
+    set_count: u64,
 }
+
+const COMPACTION_THRESHOLD: u64 = 8 * 1024;
+const SEGMENT_SIZE_THRESHOLD: u64 = 4 * 1024;
 
 /// in memory representation of the index
 #[derive(Debug)]
@@ -36,24 +42,14 @@ impl KvStore {
     /// Open the KvStore at a given path. Return the KvStore.
     pub fn open(dir: impl Into<PathBuf>) -> Result<Self> {
         let dir = dir.into();
-        let mut entries = Vec::new();
-        // scan through all the log files
-        for res in fs::read_dir(&dir)? {
-            let entry = res?;
-            let path = entry.path();
-            if path.is_file() && path.extension() == Some(&OsStr::new("log")) {
-                entries.push(path);
-            }
-        }
-        if entries.is_empty() {
+        let segments = Self::list_segments(&dir)?;
+        if segments.is_empty() {
             return Self::new(dir);
         }
 
-        // log files are created by time order, which should be in ascending order
-        entries.sort();
         let mut memtbl = MemTable::default();
-        for entry in entries {
-            let active = Segment::open(entry)?;
+        for seg in segments {
+            let active = Segment::open(seg)?;
             for key in active.hint().count().keys() {
                 if let Some(offset) = active.hint().offset().get(key) {
                     let pointer = log::Pointer::new(active.path(), *offset);
@@ -66,9 +62,25 @@ impl KvStore {
         let active = Segment::new(dir.clone())?;
         Ok(Self {
             full_path: dir,
-            active,
+            active: RefCell::new(active),
             memtbl,
+            set_count: 0,
         })
+    }
+
+    fn list_segments(dir: &PathBuf) -> Result<Vec<PathBuf>> {
+        let mut segments = Vec::new();
+        // scan through all the log files
+        for res in fs::read_dir(&dir)? {
+            let entry = res?;
+            let path = entry.path();
+            if path.is_file() && path.extension() == Some(&OsStr::new("log")) {
+                segments.push(path);
+            }
+        }
+        // log files are created by time order, which should be in ascending order
+        segments.sort();
+        Ok(segments)
     }
 
     fn new(dir: impl Into<PathBuf>) -> Result<Self> {
@@ -76,8 +88,9 @@ impl KvStore {
         let active = Segment::new(full_path.clone())?;
         Ok(Self {
             full_path,
-            active,
+            active: RefCell::new(active),
             memtbl: MemTable::default(),
+            set_count: 0,
         })
     }
 
@@ -85,9 +98,17 @@ impl KvStore {
     ///
     /// Return an error if the value is not written successfully.
     pub fn set(&mut self, key: String, value: String) -> Result<()> {
-        let pointer = self.active.set(key.clone(), value)?;
-        self.memtbl.map.insert(key, pointer);
+        self.set_impl(key, value)?;
+        self.set_count += 1;
+        if self.set_count > COMPACTION_THRESHOLD {
+            self.compact()?;
+        }
+        Ok(())
+    }
 
+    fn set_impl(&mut self, key: String, value: String) -> Result<()> {
+        let pointer = self.active.borrow_mut().set(key.clone(), value)?;
+        self.memtbl.map.insert(key, pointer);
         Ok(())
     }
 
@@ -95,13 +116,13 @@ impl KvStore {
     ///
     /// If the key does not exist, return `None`.
     /// Return an error if the value is not read successfully.
-    pub fn get(&mut self, key: String) -> Result<Option<String>> {
+    pub fn get(&self, key: String) -> Result<Option<String>> {
         match self.memtbl.map.get(&key) {
             None => Ok(None),
             Some(pointer) => {
                 let file = pointer.path();
-                if file == self.active.path() {
-                    Ok(self.active.get(&key)?)
+                if file == self.active.borrow().path() {
+                    Ok(self.active.borrow_mut().get(&key)?)
                 } else {
                     let mut file = fs::File::with_options().read(true).open(file)?;
                     file.seek(SeekFrom::Start(pointer.offset()))?;
@@ -123,11 +144,48 @@ impl KvStore {
         match self.memtbl.map.get(&key) {
             None => Err(Error::from(ErrorKind::KeyNotExist)),
             Some(_) => {
-                self.active.remove(&key)?;
+                self.active.borrow_mut().remove(&key)?;
                 self.memtbl.map.remove(&key);
                 Ok(())
             }
         }
+    }
+
+    fn compact(&mut self) -> Result<()> {
+        let mut segments = Self::list_segments(&self.full_path)?;
+
+        // place a useless placeholder, see the comment below for reasons
+        let old = self.active.replace(Segment::new(&self.full_path)?);
+        drop(old);
+        self.set_count = 0;
+
+        let mut store = Self::new(&self.full_path)?;
+        for key in self.memtbl.map.keys() {
+            if let Some(value) = self.get(key.to_owned())? {
+                store.set_impl(key.to_owned(), value)?;
+                if store.active.borrow().size() > SEGMENT_SIZE_THRESHOLD {
+                    let old = store.active.replace(Segment::new(&self.full_path)?);
+                    drop(old);
+                }
+            }
+        }
+
+        // the log file is strictly sorted according time order
+        // need to be sure that the active segment is the last created
+        segments.push(self.active.borrow().path().clone());
+        let old = self.active.replace(Segment::new(&self.full_path)?);
+        drop(old);
+        std::mem::swap(&mut self.memtbl, &mut store.memtbl);
+        drop(store);
+
+        for mut file in segments {
+            file.set_extension("log");
+            fs::remove_file(&file)?;
+            file.set_extension("hint");
+            fs::remove_file(&file)?;
+        }
+
+        Ok(())
     }
 }
 

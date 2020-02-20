@@ -74,6 +74,18 @@ fn segment_overwrite_value() -> Result<()> {
     assert_eq!(seg.get("key1")?, Some("value1".to_owned()));
     seg.set("key1".to_owned(), "value2".to_owned())?;
     assert_eq!(seg.get("key1")?, Some("value2".to_owned()));
+    for i in 0..10_000 {
+        seg.set(format!("k{}k", i), format!("V{}V", i))?;
+    }
+    for i in 0..5_000 {
+        seg.set(format!("k{}k", i), format!("A{}A", i))?;
+    }
+    for i in 0..5_000 {
+        assert_eq!(seg.get(&format!("k{}k", i))?, Some(format!("A{}A", i)));
+    }
+    for i in 5_000..10_000 {
+        assert_eq!(seg.get(&format!("k{}k", i))?, Some(format!("V{}V", i)));
+    }
 
     // Open from disk again and check persistent data.
     drop(seg);
@@ -81,6 +93,12 @@ fn segment_overwrite_value() -> Result<()> {
     assert_eq!(seg.get("key1")?, Some("value2".to_owned()));
     seg.set("key1".to_owned(), "value3".to_owned())?;
     assert_eq!(seg.get("key1")?, Some("value3".to_owned()));
+    for i in 0..5_000 {
+        assert_eq!(seg.get(&format!("k{}k", i))?, Some(format!("A{}A", i)));
+    }
+    for i in 5_000..10_000 {
+        assert_eq!(seg.get(&format!("k{}k", i))?, Some(format!("V{}V", i)));
+    }
 
     Ok(())
 }

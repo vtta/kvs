@@ -145,6 +145,10 @@ impl Segment {
             Ok(None)
         }
     }
+
+    pub fn size(&self) -> u64 {
+        self.write_offset
+    }
 }
 
 impl Hint {

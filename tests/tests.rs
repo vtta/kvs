@@ -1,10 +1,12 @@
+use std::process::Command;
+
 use assert_cmd::prelude::*;
-use kvs::{KvStore, Result};
 use predicates::ord::eq;
 use predicates::str::{contains, is_empty, PredicateStrExt};
-use std::process::Command;
 use tempfile::TempDir;
 use walkdir::WalkDir;
+
+use kvs::{KvStore, Result};
 
 // `kvs` with no args should exit with a non-zero code.
 #[test]
@@ -208,6 +210,18 @@ fn overwrite_value() -> Result<()> {
     assert_eq!(store.get("key1".to_owned())?, Some("value1".to_owned()));
     store.set("key1".to_owned(), "value2".to_owned())?;
     assert_eq!(store.get("key1".to_owned())?, Some("value2".to_owned()));
+    for i in 0..10_000 {
+        store.set(format!("k{}k", i), format!("V{}V", i))?;
+    }
+    for i in 0..5_000 {
+        store.set(format!("k{}k", i), format!("A{}A", i))?;
+    }
+    for i in 0..5_000 {
+        assert_eq!(store.get(format!("k{}k", i))?, Some(format!("A{}A", i)));
+    }
+    for i in 5_000..10_000 {
+        assert_eq!(store.get(format!("k{}k", i))?, Some(format!("V{}V", i)));
+    }
 
     // Open from disk again and check persistent data.
     drop(store);
@@ -215,6 +229,12 @@ fn overwrite_value() -> Result<()> {
     assert_eq!(store.get("key1".to_owned())?, Some("value2".to_owned()));
     store.set("key1".to_owned(), "value3".to_owned())?;
     assert_eq!(store.get("key1".to_owned())?, Some("value3".to_owned()));
+    for i in 0..5_000 {
+        assert_eq!(store.get(format!("k{}k", i))?, Some(format!("A{}A", i)));
+    }
+    for i in 5_000..10_000 {
+        assert_eq!(store.get(format!("k{}k", i))?, Some(format!("V{}V", i)));
+    }
 
     Ok(())
 }
