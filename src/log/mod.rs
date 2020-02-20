@@ -20,7 +20,7 @@ pub(crate) enum Entry {
 /// full path and file offset of a log entry
 #[derive(Debug)]
 pub(crate) struct Pointer {
-    full_path: PathBuf,
+    filename: PathBuf,
     offset: u64,
 }
 
@@ -149,6 +149,10 @@ impl Segment {
     pub fn size(&self) -> u64 {
         self.write_offset
     }
+
+    pub fn flush(&self) -> Result<()> {
+        self.hint.flush()
+    }
 }
 
 impl Hint {
@@ -210,10 +214,10 @@ impl Hint {
     pub fn count(&self) -> &HashMap<String, u64> {
         &self.count
     }
-}
 
-impl Drop for Hint {
-    fn drop(&mut self) {
+    /// flush hint file to disk
+    /// every flush would override previous result
+    pub fn flush(&self) -> Result<()> {
         let _ = fs::File::with_options()
             .create(true)
             .write(true)
@@ -224,21 +228,28 @@ impl Drop for Hint {
                 bincode::serialize_into(&file, &self)
                     .map(|_| file)
                     .map_err(Error::from)
-            })
+            })?;
+        Ok(())
+    }
+}
+
+impl Drop for Hint {
+    fn drop(&mut self) {
+        self.flush()
             .unwrap_or_else(|_| panic!("error while writing back hint file: {:?}", self.full_path));
     }
 }
 
 impl Pointer {
-    pub fn new(full_path: impl Into<PathBuf>, offset: u64) -> Self {
+    pub fn new(filename: impl Into<PathBuf>, offset: u64) -> Self {
         Self {
-            full_path: full_path.into(),
+            filename: filename.into(),
             offset,
         }
     }
 
     pub fn path(&self) -> &PathBuf {
-        &self.full_path
+        &self.filename
     }
 
     pub fn offset(&self) -> u64 {

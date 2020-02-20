@@ -152,11 +152,9 @@ impl KvStore {
     }
 
     fn compact(&mut self) -> Result<()> {
-        let mut segments = Self::list_segments(&self.full_path)?;
+        let segments = Self::list_segments(&self.full_path)?;
 
-        // place a useless placeholder, see the comment below for reasons
-        let old = self.active.replace(Segment::new(&self.full_path)?);
-        drop(old);
+        self.active.borrow().flush()?;
         self.set_count = 0;
 
         let mut store = Self::new(&self.full_path)?;
@@ -170,9 +168,6 @@ impl KvStore {
             }
         }
 
-        // the log file is strictly sorted according time order
-        // need to be sure that the active segment is the last created
-        segments.push(self.active.borrow().path().clone());
         let old = self.active.replace(Segment::new(&self.full_path)?);
         drop(old);
         std::mem::swap(&mut self.memtbl, &mut store.memtbl);
