@@ -1,7 +1,7 @@
 //! User defined error type
 //! Adopted the Error and ErrorKind pattern
 
-use std::{error, fmt, io, result};
+use std::{error, fmt, io, num, result, str};
 
 use serde::export::Formatter;
 
@@ -30,6 +30,10 @@ pub enum ErrorKind {
     InvalidLogPointer,
     /// the key to remove doesn't exist
     KeyNotExist,
+    /// invalid engine backend
+    InvalidEngine,
+    /// invalid RESP string
+    InvalidResp,
 }
 
 impl Error {
@@ -48,6 +52,8 @@ impl ErrorKind {
             ErrorKind::InvalidLogEntry => "invalid log entry",
             ErrorKind::InvalidLogPointer => "invalid log pointer",
             ErrorKind::KeyNotExist => "key not exist",
+            ErrorKind::InvalidEngine => "invalid engine backend",
+            ErrorKind::InvalidResp => "invalid RESP string",
         }
     }
 }
@@ -91,6 +97,24 @@ impl From<bincode::Error> for Error {
     fn from(e: bincode::Error) -> Self {
         Error {
             kind: ErrorKind::Serde,
+            error: Some(e.into()),
+        }
+    }
+}
+
+impl From<str::Utf8Error> for Error {
+    fn from(e: str::Utf8Error) -> Self {
+        Error {
+            kind: ErrorKind::InvalidResp,
+            error: Some(e.into()),
+        }
+    }
+}
+
+impl From<num::ParseIntError> for Error {
+    fn from(e: num::ParseIntError) -> Self {
+        Error {
+            kind: ErrorKind::InvalidResp,
             error: Some(e.into()),
         }
     }

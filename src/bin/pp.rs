@@ -5,7 +5,7 @@ use std::{io, str};
 
 use structopt::StructOpt;
 
-use kvs::Result;
+use kvs::{Resp, Result};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "kvs", about = "A command-line key-value store client")]
@@ -53,23 +53,26 @@ fn client(addr: impl ToSocketAddrs + Display) -> Result<()> {
     let mut recv = [0u8; 512];
     loop {
         let mut line = String::new();
+        io::stdout().write_all(b"client> ")?;
+        io::stdout().flush()?;
         let len = io::stdin().read_line(&mut line)?;
         if len == 0 {
             break;
         }
         let line = line.trim();
-        let v: Vec<_> = line.split(' ').filter(|s| !s.is_empty()).collect();
-        if v.len() == 0 {
+        let args: Vec<_> = line
+            .split(' ')
+            .filter(|s| !s.is_empty())
+            .map(|e| Resp::Bulk(e.into()))
+            .collect();
+        if args.is_empty() {
             continue;
         }
-        let mut buf = format!("*{}\r\n", v.len());
-        for str in v.iter() {
-            buf += &format!("${}\r\n{}\r\n", str.len(), str);
-        }
-        stream.write_all(buf.as_bytes())?;
+        stream.write_all(&Resp::Array(args).ser()?)?;
         let len = stream.read(&mut recv)?;
-        if let Ok(s) = str::from_utf8(&recv[0..len]) {
-            println!("{}>{:?}", addr, s);
+        // if let Ok(s) = str::from_utf8(&recv[0..len]) {
+        if let Ok(s) = Resp::de(&recv[0..len]) {
+            println!("{}> {:?}", addr, s);
         }
     }
     Ok(())

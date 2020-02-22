@@ -5,7 +5,9 @@
 
 pub use error::{Error, ErrorKind, Result};
 pub use kv::KvStore;
+pub use resp::Resp;
 
 mod error;
 mod kv;
 mod log;
+mod resp;
