@@ -1,6 +1,6 @@
 use structopt::StructOpt;
 
-use kvs::{ErrorKind, KvStore, Result};
+use kvs::{ErrorKind, KvStore, KvsEngine, Result};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "kvs", about = "A command-line key-value store client")]

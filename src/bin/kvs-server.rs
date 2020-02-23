@@ -1,14 +1,15 @@
 #![feature(with_options)]
+
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::str::FromStr;
 use std::{error, fmt, fs, result};
 
 use log::{debug, info};
+use serde::export::Formatter;
 use structopt::StructOpt;
 
-use kvs::{utils, Error, ErrorKind, KvStore, Resp, Result};
-use serde::export::Formatter;
+use kvs::{utils, Error, ErrorKind, KvStore, KvsEngine, Resp, Result};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "kvs-server", about = "A command-line key-value store server")]

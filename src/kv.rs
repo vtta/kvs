@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use crate::config::*;
 use crate::error::{Error, ErrorKind, Result};
 use crate::log::{self, Segment};
+use crate::KvsEngine;
 
 /// A simple key-value store implementation which wraps around std `HashMap`
 ///
@@ -94,29 +95,7 @@ impl KvStore {
         })
     }
 
-    /// Set the value of a string key to a string
-    ///
-    /// Return an error if the value is not written successfully.
-    pub fn set(&mut self, key: String, value: String) -> Result<()> {
-        self.set_impl(key, value)?;
-        self.set_count += 1;
-        if self.set_count > COMPACTION_THRESHOLD {
-            self.compact()?;
-        }
-        Ok(())
-    }
-
-    fn set_impl(&mut self, key: String, value: String) -> Result<()> {
-        let pointer = self.active.borrow_mut().set(key.clone(), value)?;
-        self.memtbl.map.insert(key, pointer);
-        Ok(())
-    }
-
-    /// Get the string value of the a string key.
-    ///
-    /// If the key does not exist, return `None`.
-    /// Return an error if the value is not read successfully.
-    pub fn get(&self, key: String) -> Result<Option<String>> {
+    fn get_no_mut(&self, key: String) -> Result<Option<String>> {
         match self.memtbl.map.get(&key) {
             None => Ok(None),
             Some(pointer) => {
@@ -137,18 +116,10 @@ impl KvStore {
         }
     }
 
-    /// Remove a given key.
-    ///
-    /// Return an error if the key does not exist or is not removed successfully.
-    pub fn remove(&mut self, key: String) -> Result<()> {
-        match self.memtbl.map.get(&key) {
-            None => Err(Error::from(ErrorKind::KeyNotExist)),
-            Some(_) => {
-                self.active.borrow_mut().remove(&key)?;
-                self.memtbl.map.remove(&key);
-                Ok(())
-            }
-        }
+    fn set_no_compact(&mut self, key: String, value: String) -> Result<()> {
+        let pointer = self.active.borrow_mut().set(key.clone(), value)?;
+        self.memtbl.map.insert(key, pointer);
+        Ok(())
     }
 
     fn compact(&mut self) -> Result<()> {
@@ -159,8 +130,8 @@ impl KvStore {
 
         let mut store = Self::new(&self.full_path)?;
         for key in self.memtbl.map.keys() {
-            if let Some(value) = self.get(key.to_owned())? {
-                store.set_impl(key.to_owned(), value)?;
+            if let Some(value) = self.get_no_mut(key.to_owned())? {
+                store.set_no_compact(key.to_owned(), value)?;
                 if store.active.borrow().size() > SEGMENT_SIZE_THRESHOLD {
                     let old = store.active.replace(Segment::new(&self.full_path)?);
                     drop(old);
@@ -188,6 +159,42 @@ impl Default for MemTable {
     fn default() -> Self {
         Self {
             map: HashMap::new(),
+        }
+    }
+}
+
+impl KvsEngine for KvStore {
+    /// Set the value of a string key to a string
+    ///
+    /// Return an error if the value is not written successfully.
+    fn set(&mut self, key: String, value: String) -> Result<()> {
+        self.set_no_compact(key, value)?;
+        self.set_count += 1;
+        if self.set_count > COMPACTION_THRESHOLD {
+            self.compact()?;
+        }
+        Ok(())
+    }
+
+    /// Get the string value of the a string key.
+    ///
+    /// If the key does not exist, return `None`.
+    /// Return an error if the value is not read successfully.
+    fn get(&mut self, key: String) -> Result<Option<String>> {
+        self.get_no_mut(key)
+    }
+
+    /// Remove a given key.
+    ///
+    /// Return an error if the key does not exist or is not removed successfully.
+    fn remove(&mut self, key: String) -> Result<()> {
+        match self.memtbl.map.get(&key) {
+            None => Err(Error::from(ErrorKind::KeyNotExist)),
+            Some(_) => {
+                self.active.borrow_mut().remove(&key)?;
+                self.memtbl.map.remove(&key);
+                Ok(())
+            }
         }
     }
 }
