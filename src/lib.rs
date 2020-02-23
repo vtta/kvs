@@ -7,6 +7,7 @@ pub use error::{Error, ErrorKind, Result};
 pub use kv::KvStore;
 pub use resp::Resp;
 
+mod config;
 mod error;
 mod kv;
 mod log;

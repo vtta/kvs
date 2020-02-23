@@ -5,9 +5,9 @@ use std::fs;
 use std::io::{Seek, SeekFrom};
 use std::path::PathBuf;
 
+use crate::config::*;
 use crate::error::{Error, ErrorKind, Result};
-use crate::log;
-use crate::log::Segment;
+use crate::log::{self, Segment};
 
 /// A simple key-value store implementation which wraps around std `HashMap`
 ///
@@ -74,7 +74,7 @@ impl KvStore {
         for res in fs::read_dir(&dir)? {
             let entry = res?;
             let path = entry.path();
-            if path.is_file() && path.extension() == Some(&OsStr::new("log")) {
+            if path.is_file() && path.extension() == Some(&OsStr::new(LOG_FILE_EXT)) {
                 segments.push(path);
             }
         }
@@ -174,9 +174,9 @@ impl KvStore {
         drop(store);
 
         for mut file in segments {
-            file.set_extension("log");
+            file.set_extension(LOG_FILE_EXT);
             fs::remove_file(&file)?;
-            file.set_extension("hint");
+            file.set_extension(HINT_FILE_EXT);
             fs::remove_file(&file)?;
         }
 

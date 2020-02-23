@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use crate::config::*;
 use crate::error::{Error, ErrorKind, Result};
 
 #[cfg(test)]
@@ -57,7 +58,7 @@ impl Segment {
 
     pub fn open(file: impl Into<PathBuf>) -> Result<Self> {
         let mut full_path = file.into();
-        full_path.set_extension("log");
+        full_path.set_extension(LOG_FILE_EXT);
         let hint = match Hint::open(&full_path) {
             Ok(hint) => hint,
             Err(e) => match e.kind() {
@@ -88,7 +89,7 @@ impl Segment {
     pub fn new(dir: impl Into<PathBuf>) -> Result<Self> {
         let mut full_path = dir.into();
         full_path.push(Self::gen_name());
-        full_path.set_extension("log");
+        full_path.set_extension(LOG_FILE_EXT);
         let hint = Hint::new(&full_path);
         // create must be used with write/append
         let writer = BufWriter::new(
@@ -159,7 +160,7 @@ impl Hint {
     // TODO: ignore hint file when reading or deserialization fails
     pub fn open(file: impl Into<PathBuf>) -> Result<Self> {
         let mut full_path = file.into();
-        full_path.set_extension("hint");
+        full_path.set_extension(HINT_FILE_EXT);
         let file = fs::File::with_options()
             .read(true)
             .open(full_path.clone())
@@ -173,7 +174,7 @@ impl Hint {
     /// create an empty hint file in memory
     pub fn new(file: impl Into<PathBuf>) -> Self {
         let mut full_path = file.into();
-        full_path.set_extension("hint");
+        full_path.set_extension(HINT_FILE_EXT);
         Self {
             full_path,
             offset: HashMap::new(),
