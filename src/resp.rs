@@ -23,6 +23,30 @@ pub enum Resp {
 }
 
 impl Resp {
+    /// used for filter whether a variant is simple string
+    pub fn is_simple(&self) -> bool {
+        match self {
+            Resp::Simple(_) => true,
+            _ => false,
+        }
+    }
+
+    /// used for filter whether a variant is array
+    pub fn is_array(&self) -> bool {
+        match self {
+            Resp::Array(_) => true,
+            _ => false,
+        }
+    }
+
+    /// check whether the value is one of the tow special null value
+    pub fn is_null(&self) -> bool {
+        match self {
+            Resp::NullArray | Resp::NullBulk => true,
+            _ => false,
+        }
+    }
+
     /// get the byte representation of the serialized data
     pub fn ser(&self) -> Result<Vec<u8>> {
         let mut buf = Vec::new();
@@ -75,6 +99,9 @@ impl Resp {
     }
 
     fn de_impl(buf: &[u8]) -> Result<(usize, Self)> {
+        if buf.is_empty() {
+            return Err(Error::from(ErrorKind::InvalidResp));
+        }
         let mut next = 0usize;
         match buf[next] {
             b'+' => {

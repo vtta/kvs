@@ -34,6 +34,10 @@ pub enum ErrorKind {
     InvalidEngine,
     /// invalid RESP string
     InvalidResp,
+    /// error related to logging facilities
+    Logger,
+    /// invalid command
+    InvalidCommand,
 }
 
 impl Error {
@@ -54,6 +58,8 @@ impl ErrorKind {
             ErrorKind::KeyNotExist => "key not exist",
             ErrorKind::InvalidEngine => "invalid engine backend",
             ErrorKind::InvalidResp => "invalid RESP string",
+            ErrorKind::Logger => "logging facilities error",
+            ErrorKind::InvalidCommand => "invalid command",
         }
     }
 }
@@ -115,6 +121,15 @@ impl From<num::ParseIntError> for Error {
     fn from(e: num::ParseIntError) -> Self {
         Error {
             kind: ErrorKind::InvalidResp,
+            error: Some(e.into()),
+        }
+    }
+}
+
+impl From<log::SetLoggerError> for Error {
+    fn from(e: log::SetLoggerError) -> Self {
+        Error {
+            kind: ErrorKind::Logger,
             error: Some(e.into()),
         }
     }
