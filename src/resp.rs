@@ -1,7 +1,7 @@
-use crate::{Error, ErrorKind, Result};
-
 use std::io::Write;
 use std::str;
+
+use crate::{Error, ErrorKind, Result};
 
 /// RESP protocol specifications
 #[derive(Debug, PartialEq)]
@@ -268,7 +268,7 @@ mod tests {
             Resp::NullArray,
         ]);
         let buf = Resp::ser(&val).unwrap();
-        println!("{:?}", String::from_utf8(buf.clone()).unwrap());
+        // println!("{:?}", String::from_utf8(buf.clone()).unwrap());
         //assert_eq!(&buf, b":1234567890\r\n");
         let de = Resp::de(&buf).unwrap();
         assert_eq!(de, val);

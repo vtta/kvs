@@ -40,35 +40,6 @@ struct MemTable {
 }
 
 impl KvStore {
-    /// Open the KvStore at a given path. Return the KvStore.
-    pub fn open(dir: impl Into<PathBuf>) -> Result<Self> {
-        let dir = dir.into();
-        let segments = Self::list_segments(&dir)?;
-        if segments.is_empty() {
-            return Self::new(dir);
-        }
-
-        let mut memtbl = MemTable::default();
-        for seg in segments {
-            let active = Segment::open(seg)?;
-            for key in active.hint().count().keys() {
-                if let Some(offset) = active.hint().offset().get(key) {
-                    let pointer = log::Pointer::new(active.path(), *offset);
-                    memtbl.map.insert(key.clone(), pointer);
-                } else {
-                    memtbl.map.remove(key);
-                }
-            }
-        }
-        let active = Segment::new(dir.clone())?;
-        Ok(Self {
-            full_path: dir,
-            active: RefCell::new(active),
-            memtbl,
-            set_count: 0,
-        })
-    }
-
     fn list_segments(dir: &PathBuf) -> Result<Vec<PathBuf>> {
         let mut segments = Vec::new();
         // scan through all the log files
@@ -164,6 +135,35 @@ impl Default for MemTable {
 }
 
 impl KvsEngine for KvStore {
+    /// Open the KvStore at a given path. Return the KvStore.
+    fn open(dir: impl Into<PathBuf>) -> Result<Self> {
+        let dir = dir.into();
+        let segments = Self::list_segments(&dir)?;
+        if segments.is_empty() {
+            return Self::new(dir);
+        }
+
+        let mut memtbl = MemTable::default();
+        for seg in segments {
+            let active = Segment::open(seg)?;
+            for key in active.hint().count().keys() {
+                if let Some(offset) = active.hint().offset().get(key) {
+                    let pointer = log::Pointer::new(active.path(), *offset);
+                    memtbl.map.insert(key.clone(), pointer);
+                } else {
+                    memtbl.map.remove(key);
+                }
+            }
+        }
+        let active = Segment::new(dir.clone())?;
+        Ok(Self {
+            full_path: dir,
+            active: RefCell::new(active),
+            memtbl,
+            set_count: 0,
+        })
+    }
+
     /// Set the value of a string key to a string
     ///
     /// Return an error if the value is not written successfully.

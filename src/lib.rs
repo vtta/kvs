@@ -3,8 +3,12 @@
 
 //! A key-value store
 
+use std::path::PathBuf;
+
 pub use error::{Error, ErrorKind, Result};
-pub use kv::KvStore;
+pub use kv::client::KvsClient;
+pub use kv::server::KvsServer;
+pub use kv::store::KvStore;
 pub use resp::Resp;
 
 mod config;
@@ -16,7 +20,13 @@ mod resp;
 pub mod utils;
 
 /// Kvs pluggable backend interface
-pub trait KvsEngine {
+pub trait KvsEngine
+where
+    Self: Sized,
+{
+    /// Open database at given data directory
+    fn open(dir: impl Into<PathBuf>) -> Result<Self>;
+
     /// Set the value of a string key to a string.
     /// Return an error if the value is not written successfully.
     fn set(&mut self, key: String, value: String) -> Result<()>;

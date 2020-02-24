@@ -38,6 +38,10 @@ pub enum ErrorKind {
     Logger,
     /// invalid command
     InvalidCommand,
+    /// error originated from sled backend
+    Sled,
+    /// encoding error
+    Encoding,
 }
 
 impl Error {
@@ -55,11 +59,13 @@ impl ErrorKind {
             ErrorKind::InvalidHintFile => "invalid hint file",
             ErrorKind::InvalidLogEntry => "invalid log entry",
             ErrorKind::InvalidLogPointer => "invalid log pointer",
-            ErrorKind::KeyNotExist => "key not exist",
+            ErrorKind::KeyNotExist => "Key not found",
             ErrorKind::InvalidEngine => "invalid engine backend",
             ErrorKind::InvalidResp => "invalid RESP string",
             ErrorKind::Logger => "logging facilities error",
             ErrorKind::InvalidCommand => "invalid command",
+            ErrorKind::Sled => "error originated from sled backend",
+            ErrorKind::Encoding => "encoding error",
         }
     }
 }
@@ -130,6 +136,24 @@ impl From<log::SetLoggerError> for Error {
     fn from(e: log::SetLoggerError) -> Self {
         Error {
             kind: ErrorKind::Logger,
+            error: Some(e.into()),
+        }
+    }
+}
+
+impl From<sled::Error> for Error {
+    fn from(e: sled::Error) -> Self {
+        Error {
+            kind: ErrorKind::Sled,
+            error: Some(e.into()),
+        }
+    }
+}
+
+impl From<std::string::FromUtf8Error> for Error {
+    fn from(e: std::string::FromUtf8Error) -> Self {
+        Error {
+            kind: ErrorKind::Encoding,
             error: Some(e.into()),
         }
     }

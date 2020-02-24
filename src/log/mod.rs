@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufReader, BufWriter, Seek, SeekFrom, Write};
+use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -115,9 +115,10 @@ impl Segment {
         let entry = Entry::Set(key.clone(), value);
         let buf = bincode::serialize(&entry)?;
         self.writer.write_all(&buf)?;
+        self.writer.flush()?;
         self.write_offset += buf.len() as u64;
         self.hint.set(key, pointer.offset);
-
+        // self.hint.flush()?;
         Ok(pointer)
     }
 
@@ -126,6 +127,7 @@ impl Segment {
         let entry = Entry::Rm(key.into());
         let buf = bincode::serialize(&entry)?;
         self.writer.write_all(&buf)?;
+        self.writer.flush()?;
         self.write_offset += buf.len() as u64;
         self.hint.remove(key);
 
@@ -160,14 +162,55 @@ impl Hint {
     // TODO: ignore hint file when reading or deserialization fails
     pub fn open(file: impl Into<PathBuf>) -> Result<Self> {
         let mut full_path = file.into();
+        full_path.set_extension(LOG_FILE_EXT);
+        if full_path.exists() {
+            full_path.set_extension(HINT_FILE_EXT);
+            let hint = Hint::load(full_path)?;
+            Ok(hint)
+        } else {
+            let hint = Hint::new(full_path);
+            Ok(hint)
+        }
+    }
+
+    fn load(file: impl Into<PathBuf>) -> Result<Self> {
+        let mut full_path = file.into();
         full_path.set_extension(HINT_FILE_EXT);
-        let file = fs::File::with_options()
-            .read(true)
-            .open(full_path.clone())
-            .map_err(|_| Error::from(ErrorKind::InvalidHintFile))?;
-        let mut hint: Hint =
-            bincode::deserialize_from(file).map_err(|_| Error::from(ErrorKind::InvalidHintFile))?;
-        hint.full_path = full_path;
+        if full_path.exists() {
+            let file = fs::File::with_options()
+                .read(true)
+                .open(full_path.clone())
+                .map_err(|_| Error::from(ErrorKind::InvalidHintFile))?;
+            // TODO: handle deserialization failure by rebuilding hint file
+            let mut hint: Hint = bincode::deserialize_from(file)
+                .map_err(|_| Error::from(ErrorKind::InvalidHintFile))?;
+            hint.full_path = full_path;
+            Ok(hint)
+        } else {
+            Hint::rebuild(full_path)
+        }
+    }
+
+    fn rebuild(file: impl Into<PathBuf>) -> Result<Self> {
+        let mut full_path = file.into();
+        full_path.set_extension(HINT_FILE_EXT);
+        let mut hint = Hint::new(&full_path);
+        full_path.set_extension(LOG_FILE_EXT);
+        let mut buf = Vec::new();
+        fs::File::open(full_path)?.read_to_end(&mut buf)?;
+        let mut cursor = Cursor::new(&buf[..]);
+        let mut pos = cursor.seek(SeekFrom::Current(0))?;
+        while let Ok(entry) = bincode::deserialize_from::<_, Entry>(&mut cursor) {
+            match entry {
+                Entry::Set(key, _) => {
+                    hint.set(key, pos);
+                }
+                Entry::Rm(key) => {
+                    hint.remove(&key);
+                }
+            }
+            pos = cursor.seek(SeekFrom::Current(0))?;
+        }
         Ok(hint)
     }
 
